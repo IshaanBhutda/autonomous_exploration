@@ -1,0 +1,23 @@
+# ROS 2 / colcon
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ORB-SLAM3 (built separately, not committed)
+ORB_SLAM3/
+Pangolin/
+
+# editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# maps / outputs
+*.pgm
+*.posegraph

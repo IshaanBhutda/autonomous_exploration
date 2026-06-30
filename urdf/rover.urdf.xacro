@@ -1,0 +1,214 @@
+<?xml version="1.0"?>
+<robot name="rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ==========================================================
+       4-wheel skid-steer rover with 2D lidar and RGB camera.
+       TF tree (parent to child):
+         base_footprint
+           base_link
+             front_left_link / front_right_link
+             rear_left_link  / rear_right_link
+             lidar_link
+             camera_link to camera_optical_link
+       Drive plugin: cmd_vel in, odom + odom-to-base_footprint TF out.
+       ========================================================== -->
+
+  <xacro:property name="base_len"   value="0.30"/>
+  <xacro:property name="base_wid"   value="0.22"/>
+  <xacro:property name="base_hgt"   value="0.10"/>
+  <xacro:property name="base_mass"  value="6.0"/>
+
+  <xacro:property name="wheel_rad"  value="0.06"/>
+  <xacro:property name="wheel_wid"  value="0.05"/>
+  <xacro:property name="wheel_mass" value="0.5"/>
+
+  <xacro:property name="wheel_xoff" value="0.10"/>
+  <xacro:property name="wheel_yoff" value="0.14"/>
+  <xacro:property name="wheel_zoff" value="0.02"/>
+
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m*(y*y+z*z)/12.0}" ixy="0" ixz="0"
+               iyy="${m*(x*x+z*z)/12.0}" iyz="0"
+               izz="${m*(x*x+y*y)/12.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cyl_inertia" params="m r l">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m*(3*r*r+l*l)/12.0}" ixy="0" ixz="0"
+               iyy="${m*(3*r*r+l*l)/12.0}" iyz="0"
+               izz="${m*r*r/2.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <link name="base_footprint"/>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 ${wheel_rad + wheel_zoff}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
+    <visual>
+      <geometry><box size="${base_len} ${base_wid} ${base_hgt}"/></geometry>
+      <material name="body"><color rgba="0.2 0.3 0.6 1.0"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="${base_len} ${base_wid} ${base_hgt}"/></geometry>
+    </collision>
+    <xacro:box_inertia m="${base_mass}" x="${base_len}" y="${base_wid}" z="${base_hgt}"/>
+  </link>
+
+  <xacro:macro name="wheel" params="name x y">
+    <link name="${name}_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry><cylinder radius="${wheel_rad}" length="${wheel_wid}"/></geometry>
+        <material name="wheel_mat"><color rgba="0.1 0.1 0.1 1.0"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry><cylinder radius="${wheel_rad}" length="${wheel_wid}"/></geometry>
+      </collision>
+      <xacro:cyl_inertia m="${wheel_mass}" r="${wheel_rad}" l="${wheel_wid}"/>
+    </link>
+    <joint name="${name}_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${name}_link"/>
+      <origin xyz="${x} ${y} ${-wheel_zoff}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+    <gazebo reference="${name}_link">
+      <mu1>1.0</mu1>
+      <mu2>1.0</mu2>
+      <kp>500000.0</kp>
+      <kd>10.0</kd>
+      <material>Gazebo/Black</material>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:wheel name="front_left"  x="${wheel_xoff}"  y="${wheel_yoff}"/>
+  <xacro:wheel name="front_right" x="${wheel_xoff}"  y="${-wheel_yoff}"/>
+  <xacro:wheel name="rear_left"   x="${-wheel_xoff}" y="${wheel_yoff}"/>
+  <xacro:wheel name="rear_right"  x="${-wheel_xoff}" y="${-wheel_yoff}"/>
+
+  <gazebo reference="base_link"><material>Gazebo/Blue</material></gazebo>
+
+  <!-- LIDAR -->
+  <link name="lidar_link">
+    <visual>
+      <geometry><cylinder radius="0.04" length="0.04"/></geometry>
+      <material name="lidar_mat"><color rgba="0.1 0.1 0.1 1.0"/></material>
+    </visual>
+    <collision><geometry><cylinder radius="0.04" length="0.04"/></geometry></collision>
+    <xacro:cyl_inertia m="0.1" r="0.04" l="0.04"/>
+  </link>
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="0.0 0 ${base_hgt/2 + 0.05}" rpy="0 0 0"/>
+  </joint>
+  <gazebo reference="lidar_link">
+    <material>Gazebo/Black</material>
+    <sensor name="lidar" type="ray">
+      <pose>0 0 0 0 0 0</pose>
+      <visualize>false</visualize>
+      <update_rate>10</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>360</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159</min_angle>
+            <max_angle>3.14159</max_angle>
+          </horizontal>
+        </scan>
+        <range><min>0.12</min><max>8.0</max><resolution>0.01</resolution></range>
+        <noise><type>gaussian</type><mean>0.0</mean><stddev>0.01</stddev></noise>
+      </ray>
+      <plugin name="lidar_plugin" filename="libgazebo_ros_ray_sensor.so">
+        <ros><remapping>~/out:=scan</remapping></ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+        <frame_name>lidar_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- RGB CAMERA (640x480 for ORB-SLAM) -->
+  <link name="camera_link">
+    <visual>
+      <geometry><box size="0.03 0.08 0.03"/></geometry>
+      <material name="cam_mat"><color rgba="0.9 0.2 0.2 1.0"/></material>
+    </visual>
+    <collision><geometry><box size="0.03 0.08 0.03"/></geometry></collision>
+    <xacro:box_inertia m="0.05" x="0.03" y="0.08" z="0.03"/>
+  </link>
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="${base_len/2} 0 ${base_hgt/2}" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_optical_link"/>
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_optical_link"/>
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+  <gazebo reference="camera_link">
+    <material>Gazebo/Red</material>
+    <sensor name="rgb_camera" type="camera">
+      <pose>0 0 0 0 0 0</pose>
+      <update_rate>15</update_rate>
+      <visualize>false</visualize>
+      <camera name="rover_cam">
+        <horizontal_fov>1.3962</horizontal_fov>
+        <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+        <clip><near>0.05</near><far>20.0</far></clip>
+      </camera>
+      <plugin name="camera_plugin" filename="libgazebo_ros_camera.so">
+        <ros></ros>
+        <camera_name>camera</camera_name>
+        <frame_name>camera_optical_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- SKID-STEER DRIVE: cmd_vel in, odom + odom-to-base_footprint TF out -->
+  <gazebo>
+    <plugin name="skid_steer_drive" filename="libgazebo_ros_diff_drive.so">
+      <ros>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+        <remapping>odom:=odom</remapping>
+      </ros>
+
+      <num_wheel_pairs>2</num_wheel_pairs>
+
+      <left_joint>front_left_joint</left_joint>
+      <right_joint>front_right_joint</right_joint>
+      <left_joint>rear_left_joint</left_joint>
+      <right_joint>rear_right_joint</right_joint>
+
+      <wheel_separation>${2*wheel_yoff}</wheel_separation>
+      <wheel_separation>${2*wheel_yoff}</wheel_separation>
+      <wheel_diameter>${2*wheel_rad}</wheel_diameter>
+      <wheel_diameter>${2*wheel_rad}</wheel_diameter>
+
+      <max_wheel_torque>50.0</max_wheel_torque>
+      <max_wheel_acceleration>10.0</max_wheel_acceleration>
+
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>true</publish_wheel_tf>
+
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+
+      <update_rate>50</update_rate>
+    </plugin>
+  </gazebo>
+
+</robot>
