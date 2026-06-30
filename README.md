@@ -48,7 +48,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full data-flow and a line-by-li
 ```bash
 # 1. clone into a workspace
 mkdir -p ~/rover_ws/src && cd ~/rover_ws/src
-git clone https://github.com/<your-username>/autonomous_exploration.git
+git clone https://github.com/IshaanBhutda/autonomous_exploration.git
 
 # 2. install dependencies
 cd ~/rover_ws
