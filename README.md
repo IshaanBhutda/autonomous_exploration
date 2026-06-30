@@ -43,7 +43,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full data-flow and a line-by-li
 
 ## 🎥 Demo Video
 
-[![Autonomous Exploration Demo](assets/demo_thumbnail.png)](https://github.com/IshaanBhutda/autonomous_exploration/blob/main/assets/demo.mp4)
+[![Autonomous Exploration Demo](assets/demo_thumbnail.png)](https://github.com/IshaanBhutda/autonomous_exploration/blob/main/assets/Example_working.mp4)
 
 ## Quick start
 
